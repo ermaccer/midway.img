@@ -50,7 +50,7 @@ struct HEADER {
 #pragma pack(pop)
 
 
-
+// not really the best code, but works for extraction and thats all required
 int main(int argc, char* argv[])
 {
     if (argv[1])

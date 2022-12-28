@@ -7,7 +7,7 @@ Works with:
  - MKT (some files only)
  - NBA Jam
  
- .BDD tested only with MK2! Be sure to have .BDB file near .BDD.
+.BDD tested only with MK2! Be sure to have .BDB file near .BDD.
 # Usage
 
 Drag'n'drop any file to extract both indexed images and palettes.

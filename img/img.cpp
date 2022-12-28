@@ -1,15 +1,15 @@
 // img.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
+#include "image.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <filesystem>
 #include <string>
 #include <memory>
-#include <algorithm>
+#include <filesystem>
 
-#include "image.h"
+
 #pragma pack(push,1)
 struct IMG_ENTRY {
     char name[16];
@@ -53,7 +53,7 @@ struct HEADER {
 // not really the best code, but works for extraction and thats all required
 int main(int argc, char* argv[])
 {
-    if (argv[1])
+    if (argc > 1)
     {
         std::ifstream pFile(argv[1], std::ifstream::binary);
 
@@ -66,30 +66,23 @@ int main(int argc, char* argv[])
             HEADER hdr;
             pFile.read((char*)&hdr, sizeof(HEADER));
 
-            printf_s("Images: %d\n", hdr.numImgs);
-
             pFile.seekg(hdr.infoPtr, pFile.beg);
             for (int i = 0; i < hdr.numImgs; i++)
             {
                 IMG_ENTRY img;
                 pFile.read((char*)&img, sizeof(IMG_ENTRY));
-                printf_s("Image %03d - %s %dx%d PAL: %d\n", i, img.name, img.x, img.y, img.palInd - 3);
                 if (img.palInd > numPal)
                     numPal = img.palInd;
                 imgs.push_back(img);
             }
 
-            numPal -= 3;
-            numPal++;
+            numPal -= 2;
             if (numPal > 0)
             {
-                printf("Palettes: %d\n", numPal);
-
                 for (int i = 0; i < numPal; i++)
                 {
                     PAL_ENTRY pal;
                     pFile.read((char*)&pal, sizeof(PAL_ENTRY));
-                    printf_s("Palette %03d - %s Colors: %d\n", i, pal.name, pal.colorsUsed);
                     pals.push_back(pal);
                 }
 
@@ -103,6 +96,8 @@ int main(int argc, char* argv[])
                 {
                     std::string output = imgs[i].name;
                     std::replace(output.begin(), output.end(), '/', '_');
+                    output.insert(0, "_");
+                    output.insert(0, std::to_string(i));
                     output += ".bmp";
                     int width = (imgs[i].x + 3) & ~3;
                     int height = imgs[i].y;
@@ -119,16 +114,16 @@ int main(int argc, char* argv[])
                     bmp.bfSize = width * height;
                     bmp.bfReserved1 = 0;
                     bmp.bfReserved2 = 0;
-                    bmp.bfOffBits = sizeof(bmp_header) + sizeof(bmp_info_header);
+                    bmp.bfOffBits = sizeof(bmp_header) + sizeof(bmp_info_header) + (sizeof(rgbr_pal_entry) * pal.colorsUsed);
                     bmpf.biSize = sizeof(bmp_info_header);
                     bmpf.biWidth = width;
                     bmpf.biHeight = height;
                     bmpf.biPlanes = 1;
-                    bmpf.biBitCount = 24;
+                    bmpf.biBitCount = 8;
                     bmpf.biCompression = 0;
                     bmpf.biXPelsPerMeter = 0;
                     bmpf.biYPelsPerMeter = 0;
-                    bmpf.biClrUsed = 0;
+                    bmpf.biClrUsed = pal.colorsUsed;
                     bmpf.biClrImportant = 0;
 
 
@@ -140,27 +135,35 @@ int main(int argc, char* argv[])
                     // get colors
                     pFile.seekg(pal.offset, pFile.beg);
 
-                    std::vector<rgb_pal_entry> colors;
+                    std::vector<rgbr_pal_entry> colors;
 
                     for (int a = 0; a < pal.colorsUsed; a++)
                     {
                         short m_sPixel;
                         pFile.read((char*)&m_sPixel, sizeof(short));
 
-                        rgb_pal_entry color = {};
+                        rgbr_pal_entry color = {};
                         color.r = 8 * (m_sPixel & 31);	m_sPixel >>= 5;
                         color.g = 8 * (m_sPixel & 31);	m_sPixel >>= 5;
                         color.b = 8 * (m_sPixel & 31);
 
-                        rgb_pal_entry cr = color;
+                        rgbr_pal_entry cr = color;
                         colors.push_back(cr);
                     }
-
 
                     if (argv[2])
                     {
                         if (strcmp("bg", argv[2]) == 0)
                             colors[0] = { 255,0,255 };
+                    }
+
+
+
+                    // write colors
+
+                    for (int i = 0; i < pal.colorsUsed; i++)
+                    {
+                        oFile.write((char*)&colors[i], sizeof(rgbr_pal_entry));
                     }
 
 
@@ -174,18 +177,110 @@ int main(int argc, char* argv[])
                     {
                         for (int x = 0; x < width; x++)
                         {
-                            int id = dataBuff[x + (y * width)];
-                            oFile.write((char*)&colors[id], sizeof(rgb_pal_entry));
+                           // int id = dataBuff[x + (y * width)];
+                           // oFile.write((char*)&colors[id], sizeof(rgb_pal_entry));
+                            oFile.write((char*)&dataBuff[x + (y * width)], sizeof(char));
                         }
                     }
-                    printf_s("Saved %s!\n", output.c_str());
+                    printf("%s saved!\n", output.c_str());               
+                }
+
+                std::filesystem::current_path("...");
+
+                std::filesystem::create_directory("pal");
+                std::filesystem::current_path("pal");
+                for (int i = 0; i < numPal; i++)
+                {
+                    // color palettes
+
+
+
+                    std::vector<rgb_pal_entry> palImage;
+
+
+                    // get colors
+                    pFile.seekg(pals[i].offset, pFile.beg);
+
+                    std::vector<rgbr_pal_entry> colors;
+
+                    for (int a = 0; a < pals[i].colorsUsed; a++)
+                    {
+                        short m_sPixel;
+                        pFile.read((char*)&m_sPixel, sizeof(short));
+
+                        rgbr_pal_entry color = {};
+                        color.r = 8 * (m_sPixel & 31);	m_sPixel >>= 5;
+                        color.g = 8 * (m_sPixel & 31);	m_sPixel >>= 5;
+                        color.b = 8 * (m_sPixel & 31);
+
+                        rgbr_pal_entry cr = color;
+                        colors.push_back(cr);
+                    }
+
+                    for (unsigned int i = 0; i < 64 * 64; i++)
+                    {
+                        if (i < colors.size())
+                        {
+                            rgbr_pal_entry cr = colors[i];
+                            rgb_pal_entry color;
+                            color.r = cr.r;
+                            color.g = cr.g;
+                            color.b = cr.b;
+                            palImage.push_back(color);
+                        }
+                        else
+                        {
+                            palImage.push_back({ 255,0,255 });
+                        }
+                    }
+
+                    std::string output = pals[i].name;
+                    output.insert(0, "_");
+                    output.insert(0, std::to_string(i));
+                    output += "_pal";
+                    output += ".bmp";
+
+                    // create bmp
+                    bmp_header bmp;
+                    bmp_info_header bmpf;
+                    bmp.bfType = 'MB';
+                    bmp.bfSize = sizeof(palImage) + sizeof(bmp_header) + sizeof(bmp_info_header);
+                    bmp.bfReserved1 = 0;
+                    bmp.bfReserved2 = 0;
+                    bmp.bfOffBits = sizeof(bmp_header) + sizeof(bmp_info_header);
+                    bmpf.biSize = sizeof(bmp_info_header);
+                    bmpf.biWidth = 64;
+                    bmpf.biHeight = 64;
+                    bmpf.biPlanes = 1;
+                    bmpf.biBitCount = 24;
+                    bmpf.biSizeImage = 64 * 64 * sizeof(rgb_pal_entry);
+                    bmpf.biCompression = 0;
+                    bmpf.biXPelsPerMeter = 2880;
+                    bmpf.biYPelsPerMeter = 2880;
+                    bmpf.biClrUsed = 0;
+                    bmpf.biClrImportant = 0;
+
+                    std::ofstream oFile(output, std::ofstream::binary);
+                    oFile.write((char*)&bmp, sizeof(bmp_header));
+                    oFile.write((char*)&bmpf, sizeof(bmp_info_header));
+
+
+                    for (int y = 64 - 1; y >= 0; y--)
+                    {
+                        for (int x = 0; x < 64; x++)
+                        {
+                            oFile.write((char*)&palImage[x + (y * 64)], sizeof(rgb_pal_entry));
+                        }
+                    }
+
+
+                    printf_s("Palette saved as %s\n", output.c_str());
+
+
 
                 }
             }
-
-
         }
-
         
     }
 }

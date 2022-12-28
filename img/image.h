@@ -40,22 +40,3 @@ struct rgbr_pal_entry {
 	unsigned char b;
 	unsigned char reserved;
 };
-
-
-
-struct harvester_bm {
-	int width;
-	int height;
-	int pad;
-};
-
-#pragma pack(push,1)
-struct harvester_abm {
-	int		unk[2];
-	int		width;
-	int		height;
-	char	flag;
-	int		size;
-	int		_pad;
-};
-#pragma pack(pop)

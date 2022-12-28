@@ -193,6 +193,8 @@ int main(int argc, char* argv[])
                 {
                     // color palettes
 
+                    int width = 64;
+                    int height = 64;
 
 
                     std::vector<rgb_pal_entry> palImage;
@@ -217,7 +219,7 @@ int main(int argc, char* argv[])
                         colors.push_back(cr);
                     }
 
-                    for (unsigned int i = 0; i < 64 * 64; i++)
+                    for (unsigned int i = 0; i < width * height; i++)
                     {
                         if (i < colors.size())
                         {
@@ -249,11 +251,11 @@ int main(int argc, char* argv[])
                     bmp.bfReserved2 = 0;
                     bmp.bfOffBits = sizeof(bmp_header) + sizeof(bmp_info_header);
                     bmpf.biSize = sizeof(bmp_info_header);
-                    bmpf.biWidth = 64;
-                    bmpf.biHeight = 64;
+                    bmpf.biWidth = width;
+                    bmpf.biHeight = height;
                     bmpf.biPlanes = 1;
                     bmpf.biBitCount = 24;
-                    bmpf.biSizeImage = 64 * 64 * sizeof(rgb_pal_entry);
+                    bmpf.biSizeImage = width * height * sizeof(rgb_pal_entry);
                     bmpf.biCompression = 0;
                     bmpf.biXPelsPerMeter = 2880;
                     bmpf.biYPelsPerMeter = 2880;
@@ -265,11 +267,11 @@ int main(int argc, char* argv[])
                     oFile.write((char*)&bmpf, sizeof(bmp_info_header));
 
 
-                    for (int y = 64 - 1; y >= 0; y--)
+                    for (int y = height - 1; y >= 0; y--)
                     {
-                        for (int x = 0; x < 64; x++)
+                        for (int x = 0; x < width; x++)
                         {
-                            oFile.write((char*)&palImage[x + (y * 64)], sizeof(rgb_pal_entry));
+                            oFile.write((char*)&palImage[x + (y * width)], sizeof(rgb_pal_entry));
                         }
                     }
 

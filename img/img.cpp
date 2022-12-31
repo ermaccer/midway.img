@@ -11,6 +11,12 @@
 #include <algorithm>
 #include <sstream>
 
+#if defined(__linux__) || defined(__APPLE__)
+#define printf_s printf
+#define sscanf_s sscanf
+#define fopen_s(fp, fmt, mode)   *(fp)=fopen( (fmt), (mode))
+#endif
+
 #pragma pack(push,1)
 struct IMG_ENTRY {
     char name[16];
@@ -243,7 +249,7 @@ int main(int argc, char* argv[])
                         printf("%s saved!\n", output.c_str());
                     }
 
-                    std::filesystem::current_path("...");
+                    std::filesystem::current_path("..");
 
                     std::filesystem::create_directory("pal");
                     std::filesystem::current_path("pal");
@@ -554,6 +560,11 @@ int main(int argc, char* argv[])
             return 1;
         }
         
+    }
+    else
+    {
+        printf_s("USAGE: img <file> <flag(optional)>\n\n");
+        printf_s("Set flag to 'bg' to extract images with magenta as the alpha color\n");
     }
     return 0;
 }
